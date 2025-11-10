@@ -33,14 +33,12 @@ app.post('/api/login', (req, res) => {
         const sessionId = Date.now().toString();
 
         // --- VULNERABLE CODE ---
-        sessions[sessionId] = { username };
+        // sessions[sessionId] = { username };
         // --- END VULNERABLE CODE ---
 
-        // --- SECURE CODE (Comment this block out for the vulnerability demo) ---
-        
-        // const csrfToken = crypto.randomBytes(16).toString('hex');
-        // sessions[sessionId] = { username, csrfToken }; // Store the token with the session
-    
+        // --- SECURE CODE ---
+        const csrfToken = crypto.randomBytes(16).toString('hex');
+        sessions[sessionId] = { username, csrfToken }; // Store the token with the session
         // --- END SECURE CODE ---
         
         res.cookie('sessionId', sessionId, { httpOnly: true, sameSite: 'lax' });
@@ -57,16 +55,16 @@ app.get('/api/account', (req, res) => {
         const user = userData[userSession.username];
 
         // --- VULNERABLE CODE ---
-        res.json({ balance: user.balance, transactions: user.transactions });
+        // res.json({ balance: user.balance, transactions: user.transactions });
         // --- END VULNERABLE CODE ---
 
         // --- SECURE CODE (Comment this block out for the vulnerability demo) ---
         
-        // res.json({
-        //     balance: user.balance,
-        //     transactions: user.transactions,
-        //     csrfToken: userSession.csrfToken // Send the secret token to the client
-        // });
+        res.json({
+            balance: user.balance,
+            transactions: user.transactions,
+            csrfToken: userSession.csrfToken // Send the secret token to the client
+        });
     
         // --- END SECURE CODE ---
 
@@ -75,8 +73,7 @@ app.get('/api/account', (req, res) => {
     }
 });
 
-
-// --- VULNERABLE CODE TO COMMENT OUT FOR SECURE DEMO ---
+// --- VULNERABLE CODE ---
 // This entire GET route is the primary vulnerability.
 app.get('/api/transfer', (req, res) => {
     const sessionId = req.cookies.sessionId;
@@ -89,19 +86,17 @@ app.get('/api/transfer', (req, res) => {
 });
 // --- END VULNERABLE CODE ---
 
-
+// --- SECURE CODE ---
 app.post('/api/transfer', (req, res) => {
     const sessionId = req.cookies.sessionId;
     const userSession = sessions[sessionId];
 
-    // --- SECURE CODE (Comment this block out for the vulnerability demo) ---
-
-    // const receivedCsrfToken = req.headers['x-csrf-token'];
-    // if (!userSession || receivedCsrfToken !== userSession.csrfToken) {
-    //     console.log('[SERVER] CSRF validation FAILED.');
-    //     return res.status(403).json({ error: 'Forbidden: Invalid CSRF token.' });
-    // }
-
+    // --- SECURE CODE ---
+    const receivedCsrfToken = req.headers['x-csrf-token'];
+    if (!userSession || receivedCsrfToken !== userSession.csrfToken) {
+        console.log('[SERVER] CSRF validation FAILED.');
+        return res.status(403).json({ error: 'Forbidden: Invalid CSRF token.' });
+    }
     // --- END SECURE CODE ---
     
     // This part of the code is shared between both versions
@@ -111,7 +106,7 @@ app.post('/api/transfer', (req, res) => {
     const { recipient, amount } = req.body; 
     performTransfer(userSession, recipient, amount, res, false);
 });
-
+// --- END SECURE CODE ---
 
 function performTransfer(userSession, recipient, amount, res, isMalicious) {
     // ... This helper function does not need to be changed ...
